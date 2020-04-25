@@ -1,21 +1,27 @@
+//! Author: Mike Hilgendorf <mike@hilgendorf.audio>
+//! 
+//! Bare minimum plugin that copies input to output, doesn't 
+//! save its own state, and doesn't have any parameters. 
 #![allow(clippy::collapsible_if)]
 #![allow(clippy::missing_safety_doc)]
+use std::{
+    os::raw::{c_char, c_short, c_void}, 
+    ptr::{null_mut, copy_nonoverlapping}, 
+};
+use vst3_com::{sys::GUID, IID};
+use vst3_sys::{
+    VST3,
+    base::{
+        kInvalidArgument, kResultFalse, kResultOk, tresult, FIDString, IPluginBase, IPluginFactory,
+        TBool,
+    }, 
+    vst::{
+        AudioBusBuffers, BusDirection, BusDirections, BusFlags, BusInfo, IAudioPresentationLatency,
+        IAudioProcessor, IAutomationState, IComponent, IEditController, MediaTypes, ParameterInfo,
+        ProcessData, ProcessSetup, RoutingInfo, TChar,
+    }
+};
 use log::*;
-use std::os::raw::{c_char, c_short, c_void};
-use std::ptr::copy_nonoverlapping;
-use std::ptr::null_mut;
-use vst3_com::sys::GUID;
-use vst3_com::IID;
-use vst3_sys::base::{
-    kInvalidArgument, kResultFalse, kResultOk, tresult, FIDString, IPluginBase, IPluginFactory,
-    TBool,
-};
-use vst3_sys::vst::{
-    AudioBusBuffers, BusDirection, BusDirections, BusFlags, BusInfo, IAudioPresentationLatency,
-    IAudioProcessor, IAutomationState, IComponent, IEditController, MediaTypes, ParameterInfo,
-    ProcessData, ProcessSetup, RoutingInfo, TChar,
-};
-use vst3_sys::VST3;
 use widestring::U16CString;
 
 unsafe fn strcpy(src: &str, dst: *mut c_char) {
@@ -29,7 +35,14 @@ unsafe fn wstrcpy(src: &str, dst: *mut c_short) {
     copy_nonoverlapping(src.as_ptr() as *const c_void as *const _, dst, src.len());
 }
 
-#[VST3(implements(IComponent, IEditController, IAudioProcessor))]
+#[VST3(implements(
+    IComponent, 
+    IPluginBase, 
+    IEditController, 
+    IAudioProcessor, 
+    IAutomationState, 
+    IAudioPresentationLatency
+))]
 pub struct PassthruPlugin {}
 pub struct PassthruController {}
 impl PassthruPlugin {
@@ -119,26 +132,19 @@ impl IAudioProcessor for PassthruPlugin {
         _outputs: *mut u64,
         _num_outs: i32,
     ) -> i32 {
-        kResultOk
+        kResultFalse
     }
 
     unsafe fn get_bus_arrangements(&self, dir: i32, idx: i32, arr: *mut u64) -> i32 {
+        info!("get_bus(): dir: {}, idx: {}, arr: {:016b}", dir, idx, *arr);
         let arr = &mut *arr;
-        if dir == BusDirections::kInput as i32 {
-            if idx == 0 {
-                *arr = 0x03;
-                kResultOk
-            } else {
-                kResultFalse
-            }
+        if (*arr == 0x0) || (*arr == 0x1) || (*arr == 0x3) {
+            return kResultOk;
         } else {
-            if idx == 1 {
-                *arr = 0x03;
-                kResultOk
-            } else {
-                kResultFalse
-            }
+            *arr = 0x03;
+            return kResultOk;
         }
+        kResultFalse
     }
 
     unsafe fn can_process_sample_size(&self, _symbolic_sample_size: i32) -> i32 {
