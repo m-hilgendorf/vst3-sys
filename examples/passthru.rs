@@ -1,27 +1,27 @@
 //! Author: Mike Hilgendorf <mike@hilgendorf.audio>
-//! 
-//! Bare minimum plugin that copies input to output, doesn't 
-//! save its own state, and doesn't have any parameters. 
+//!
+//! Bare minimum plugin that copies input to output, doesn't
+//! save its own state, and doesn't have any parameters.
 #![allow(clippy::collapsible_if)]
 #![allow(clippy::missing_safety_doc)]
+use log::*;
 use std::{
-    os::raw::{c_char, c_short, c_void}, 
-    ptr::{null_mut, copy_nonoverlapping}, 
+    os::raw::{c_char, c_short, c_void},
+    ptr::{copy_nonoverlapping, null_mut},
 };
 use vst3_com::{sys::GUID, IID};
 use vst3_sys::{
-    VST3,
     base::{
         kInvalidArgument, kResultFalse, kResultOk, tresult, FIDString, IPluginBase, IPluginFactory,
         TBool,
-    }, 
+    },
     vst::{
         AudioBusBuffers, BusDirection, BusDirections, BusFlags, BusInfo, IAudioPresentationLatency,
         IAudioProcessor, IAutomationState, IComponent, IEditController, MediaTypes, ParameterInfo,
         ProcessData, ProcessSetup, RoutingInfo, TChar,
-    }
+    },
+    VST3,
 };
-use log::*;
 use widestring::U16CString;
 
 unsafe fn strcpy(src: &str, dst: *mut c_char) {
@@ -36,11 +36,11 @@ unsafe fn wstrcpy(src: &str, dst: *mut c_short) {
 }
 
 #[VST3(implements(
-    IComponent, 
-    IPluginBase, 
-    IEditController, 
-    IAudioProcessor, 
-    IAutomationState, 
+    IComponent,
+    IPluginBase,
+    IEditController,
+    IAudioProcessor,
+    IAutomationState,
     IAudioPresentationLatency
 ))]
 pub struct PassthruPlugin {}
